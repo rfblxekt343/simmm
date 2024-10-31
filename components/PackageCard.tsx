@@ -1,20 +1,20 @@
-import React from 'react';
-import { useLanguage } from '../contexts/LanguageContext';
-import { translations } from '../utils/translations';
-import { getCountryCode } from '../utils/countryUtils';
+// In PackageCard.tsx
+import Image from 'next/image';
+//import AiraloLogo from '../public/airalo-logo.png'; // Import Airalo logo
+//import AnesimLogo from '../public/anesim-logo.png'; // Import Anesim logo
 import { FaPhone, FaCheck } from 'react-icons/fa';
-import 'flag-icons/css/flag-icons.min.css';
+import "flag-icons/css/flag-icons.min.css";
 
 export interface PackageCardProps {
-  packageNumber: number;
-  price: number;
+  packageNumber: string;
+  price: string;
   duration: number;
-  data: number;
-  minutes: number;
+  data: string;
+  minutes: string;
   provider: string;
-  countries: string;
   includesCalls: boolean;
-  onSelect: (packageData: PackageCardProps) => void;
+  onSelect: () => void;
+  url: string;
 }
 
 const PackageCard: React.FC<PackageCardProps> = ({
@@ -24,49 +24,38 @@ const PackageCard: React.FC<PackageCardProps> = ({
   data,
   minutes,
   provider,
-  countries,
   includesCalls,
-  onSelect,
+  url,
+  onSelect
 }) => {
-  const { language, isRTL } = useLanguage();
-
-  const handleSelect = () => {
-    window.location.href = 'https://www.google.com';
-  };
-
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 transition duration-300 ease-in-out transform hover:scale-105">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-blue-600">{translations[language].package} {packageNumber}</h2>
-        <span className="text-3xl font-bold text-blue-600">₪{price}</span>
+    <div className="bg-white rounded-lg shadow-md p-5 transform transition duration-200 hover:scale-105">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-3xl font-bold text-blue-600">{price}</span>
+        {provider === 'Airalo' && <Image src={AiraloLogo} alt="Airalo Logo" width={40} height={40} />}
+        {provider === 'Anesim' && <Image src={AnesimLogo} alt="Anesim Logo" width={40} height={40} />}
       </div>
-      <div className="mb-4 pb-4 border-b border-gray-200">
-        <p className="text-lg"><strong>{duration}</strong> {translations[language].days}</p>
-        <p className="text-lg"><strong>{data}GB</strong> {translations[language].data}</p>
+      <div className="border-b pb-3 mb-3">
+        <p className="text-lg"><strong>{duration}</strong> Days</p>
+        <p className="text-lg"><strong>{data}</strong> Data</p>
       </div>
-      <div className="mb-4">
-        <p className="flex items-center mb-2">
-          <FaPhone className={`${isRTL ? 'ml-2' : 'mr-2'} text-blue-600 inline-block`} />
-          <span className="inline-block"><strong>{minutes}</strong> {translations[language].minutes}</span>
-        </p>
-        <p className="flex items-center mb-2">
-          <span className={`fi fi-${getCountryCode(countries, language).toLowerCase()} ${isRTL ? 'ml-2' : 'mr-2'} text-2xl inline-block`}></span>
-          <span className="inline-block">{countries}</span>
+      <div className="mb-3">
+        <p className="flex items-center">
+          <FaPhone className="mr-2 text-blue-600" />
+          <span>{minutes}</span>
         </p>
         {includesCalls && (
-          <p className="flex items-center mb-2">
-            <FaCheck className={`${isRTL ? 'ml-2' : 'mr-2'} text-green-600 inline-block`} />
-            <span className="inline-block">{translations[language].includesCalls}</span>
+          <p className="flex items-center">
+            <FaCheck className="mr-2 text-green-600" />
+            <span>Calls Included</span>
           </p>
         )}
       </div>
-      <p className="font-bold mb-4">{provider}</p>
-      <p className="mb-4 text-sm text-gray-600">{translations[language].customerServiceInHebrew}</p>
-      <button 
-        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg w-full transition duration-300 ease-in-out"
-        onClick={handleSelect}
+      <button
+        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg w-full transition duration-200"
+        onClick={onSelect}
       >
-        {translations[language].select}
+        Select Package
       </button>
     </div>
   );

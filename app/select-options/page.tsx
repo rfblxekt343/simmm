@@ -1,13 +1,17 @@
-'use client';
+// SelectOptions.tsx
 
+"use client"
+import { NextPage } from 'next';
 import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { translations } from '@/utils/translations';
 import NavBar from '../../components/NavBar';
 import Footer from '../../components/Footer';
-import PackageCard, { PackageCardProps } from '../../components/PackageCard';
+import PackageCard from '../../components/PackageCard';
 import { getCountryName } from '@/utils/countryUtils';
+import SortAndFilter from './SortAndFilter';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
 
 interface Plan {
   externalId: string;
@@ -28,9 +32,21 @@ interface Plan {
   inventoryCount: number;
 }
 
-export default function SelectOptions() {
+const formatPrice = (price: number, currency: string, language: string) => {
+  try {
+    return new Intl.NumberFormat(`${language}-US`, {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price);
+  } catch (error) {
+    return `$${price.toFixed(2)}`;
+  }
+};
+
+const SelectOptions: NextPage = () => {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { language } = useLanguage();
   const [options, setOptions] = useState({
     country: '',
@@ -39,11 +55,15 @@ export default function SelectOptions() {
     data: '',
   });
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [filteredPlans, setFilteredPlans] = useState<Plan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const countryCode = searchParams.get('country');
     if (!countryCode) {
       setPlans([]);
+      setFilteredPlans([]);
+      setIsLoading(false);
       return;
     }
 
@@ -52,7 +72,6 @@ export default function SelectOptions() {
     const includesCalls = searchParams.get('includesCalls');
     const data = searchParams.get('data');
 
-    // Update options
     setOptions({
       country: country || '',
       duration: duration || '',
@@ -60,62 +79,83 @@ export default function SelectOptions() {
       data: data || '',
     });
 
-    // Fetch plans with countryCode directly
     fetchPlans(countryCode);
   }, [searchParams, language]);
 
   const fetchPlans = async (countryCode: string) => {
+    setIsLoading(true);
     try {
-      console.log('Fetching plans for country:', countryCode);
       const response = await fetch(`/api/plans?country=${countryCode}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch plans');
-      }
+      if (!response.ok) throw new Error('Failed to fetch plans');
       const data = await response.json();
       setPlans(data);
+      setFilteredPlans(data);
     } catch (error) {
       console.error('Error fetching plans:', error);
       setPlans([]);
+      setFilteredPlans([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const filteredPlans = plans.filter((plan) => {
-    if (options.duration && plan.duration !== parseInt(options.duration)) return false;
-    if (options.data) {
-      const dataAmount = plan.capacity === -1 ? Infinity : plan.capacity;
-      if (dataAmount < parseInt(options.data)) return false;
-    }
-    if (options.includesCalls && !plan.phoneNumber) return false;
-    return true;
-  });
+  const handleSort = (sortedPlans: Plan[]) => {
+    setFilteredPlans(sortedPlans);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <NavBar />
-      <main className="container mx-auto py-6">
-        <h1 className="text-3xl font-bold mb-6 text-center">
-          {translations[language].selectOptions}
-        </h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPlans.map((plan) => (
-            <PackageCard
-              key={plan.externalId}
-              packageNumber={plan.externalId}
-              price={plan.price}
-              currency={plan.currency}
-              duration={plan.duration}
-              data={plan.capacity === -1 ? 'Unlimited' : `${plan.capacity} GB`}
-              minutes={plan.phoneNumber ? 'Included' : 'Not included'}
-              provider={plan.providerName}
-              countries={plan.coverages.join(', ')}
-              includesCalls={plan.phoneNumber}
-              onSelect={() => window.open(plan.url, '_blank')}
-            />
-          ))}
+      <main className="container mx-auto py-6 flex flex-col md:flex-row">
+        <div className="w-full md:w-1/4 lg:w-1/4">
+          <SortAndFilter plans={plans} onFilterAndSort={handleSort} />
+        </div>
+        <div className="flex-1 md:ml-4">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <LoadingSkeleton key={index} />
+              ))}
+            </div>
+          ) : (
+            <h1 className="text-3xl font-bold mb-6 text-center">
+              Explore the best eSIM packages for {options.country}
+            </h1>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+            {filteredPlans.map((plan, index) => (
+              <PackageCard
+                key={plan.externalId}
+                packageNumber={plan.externalId}
+                price={formatPrice(plan.price, plan.currency, language)}
+                currency={plan.currency}
+                duration={plan.duration}
+                data={
+                  plan.capacity === -1
+                    ? 'Unlimited'
+                    : plan.capacity >= 1024
+                    ? `${(plan.capacity / 1024).toFixed(2)} GB`
+                    : `${plan.capacity} MB`
+                }
+                minutes={plan.phoneNumber ? 'Included' : 'Not included'}
+                provider={plan.providerName}
+                includesCalls={plan.phoneNumber}
+                url={plan.url}
+                onSelect={() => window.open(plan.url, '_blank')}
+              >
+                {index === 0 && (
+                  <span className="text-green-600 font-bold text-sm inline-flex items-center">
+                    🌟 Best Offer
+                  </span>
+                )}
+              </PackageCard>
+            ))}
+          </div>
         </div>
       </main>
       <Footer />
     </div>
   );
-}
+};
+
+export default SelectOptions;
