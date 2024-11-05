@@ -1,5 +1,4 @@
 // SortAndFilter.tsx
-
 import React, { useState, useEffect } from 'react';
 
 interface Plan {
@@ -11,7 +10,14 @@ interface Plan {
   price: number;
   currency: string;
   duration: number;
+  coverages: string[];
+  networkSpeed: string[];
   url: string;
+  metadata: string | null;
+  promoCode: any;
+  phoneNumber: boolean;
+  coverageType: string;
+  inventoryCount: number;
 }
 
 interface SortAndFilterProps {
@@ -20,8 +26,6 @@ interface SortAndFilterProps {
 }
 
 const SortAndFilter: React.FC<SortAndFilterProps> = ({ plans, onFilterAndSort }) => {
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [selectedRegion, setSelectedRegion] = useState('');
   const [sortOption, setSortOption] = useState('');
   const [planSizeRange, setPlanSizeRange] = useState<[number, number] | null>(null);
   const [durationRange, setDurationRange] = useState<[number, number] | null>(null);
@@ -30,37 +34,85 @@ const SortAndFilter: React.FC<SortAndFilterProps> = ({ plans, onFilterAndSort })
     setSortOption(option);
   };
 
+  const convertToGB = (capacity: number): number => {
+    return capacity >= 1024 ? capacity / 1024 : capacity / 1024;
+  };
+
   const applyFiltersAndSort = () => {
     let filteredSortedPlans = [...plans];
 
-    if (selectedCountry) filteredSortedPlans = filteredSortedPlans.filter(plan => plan.country === selectedCountry);
-    if (selectedRegion) filteredSortedPlans = filteredSortedPlans.filter(plan => plan.region === selectedRegion);
-    if (planSizeRange) filteredSortedPlans = filteredSortedPlans.filter(plan => plan.capacity >= planSizeRange[0] && plan.capacity <= planSizeRange[1]);
-    if (durationRange) filteredSortedPlans = filteredSortedPlans.filter(plan => plan.duration >= durationRange[0] && plan.duration <= durationRange[1]);
+    // Apply size filter
+    if (planSizeRange) {
+      filteredSortedPlans = filteredSortedPlans.filter(plan => {
+        const capacityGB = convertToGB(plan.capacity);
+        return capacityGB >= planSizeRange[0] && capacityGB <= planSizeRange[1];
+      });
+    }
 
-    if (sortOption === 'Cheapest') filteredSortedPlans.sort((a, b) => a.price - b.price);
-    else if (sortOption === 'Most Data') filteredSortedPlans.sort((a, b) => b.capacity - a.capacity);
-    else if (sortOption === 'Lowest Price/GB') filteredSortedPlans.sort((a, b) => (a.price / a.capacity) - (b.price / b.capacity));
+    // Apply duration filter
+    if (durationRange) {
+      filteredSortedPlans = filteredSortedPlans.filter(plan => {
+        const duration = Math.floor(plan.duration / 30); // Convert days to months
+        return duration >= durationRange[0] && duration <= durationRange[1];
+      });
+    }
+
+    // Apply sorting
+    switch (sortOption) {
+      case 'Cheapest':
+        filteredSortedPlans.sort((a, b) => a.price - b.price);
+        break;
+      case 'Most Data':
+        filteredSortedPlans.sort((a, b) => convertToGB(b.capacity) - convertToGB(a.capacity));
+        break;
+      case 'Lowest Price/GB':
+        filteredSortedPlans.sort((a, b) => {
+          const pricePerGBa = a.price / convertToGB(a.capacity);
+          const pricePerGBb = b.price / convertToGB(b.capacity);
+          return pricePerGBa - pricePerGBb;
+        });
+        break;
+      default:
+        break;
+    }
 
     onFilterAndSort(filteredSortedPlans);
   };
 
   useEffect(() => {
     applyFiltersAndSort();
-  }, [selectedCountry, selectedRegion, sortOption, planSizeRange, durationRange]);
+  }, [sortOption, planSizeRange, durationRange, plans]);
+
+  const clearFilters = () => {
+    setSortOption('');
+    setPlanSizeRange(null);
+    setDurationRange(null);
+  };
 
   return (
     <div className="filter-panel bg-white p-4 rounded-md shadow-sm w-full">
-      <h3 className="text-lg font-semibold mb-1">Filters</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Filters</h3>
+        <button
+          onClick={clearFilters}
+          className="text-sm text-blue-600 hover:text-blue-800"
+        >
+          Clear all
+        </button>
+      </div>
 
-      <div className="mb-2">
-        <h4 className="font-medium text-sm">Sort by</h4>
-        <div className="flex flex-wrap mt-1 gap-1">
+      <div className="mb-4">
+        <h4 className="font-medium text-sm mb-2">Sort by</h4>
+        <div className="flex flex-wrap gap-2">
           {['Cheapest', 'Most Data', 'Lowest Price/GB'].map(option => (
             <button
               key={option}
               onClick={() => handleSortChange(option)}
-              className={`py-1 px-2 text-xs rounded-sm transition duration-200 ${sortOption === option ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black hover:bg-blue-300'}`}
+              className={`py-1.5 px-3 text-sm rounded transition duration-200 ${
+                sortOption === option 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
               {option}
             </button>
@@ -68,19 +120,23 @@ const SortAndFilter: React.FC<SortAndFilterProps> = ({ plans, onFilterAndSort })
         </div>
       </div>
 
-      <div className="mb-2">
-        <h4 className="font-medium text-sm">Plan Size</h4>
-        <div className="flex flex-wrap mt-1 gap-1">
+      <div className="mb-4">
+        <h4 className="font-medium text-sm mb-2">Data Amount</h4>
+        <div className="flex flex-wrap gap-2">
           {[
             { label: '0-5 GB', range: [0, 5] },
             { label: '5-10 GB', range: [5, 10] },
             { label: '10-20 GB', range: [10, 20] },
-            { label: '20+ GB', range: [20, 100] },
+            { label: '20+ GB', range: [20, 1000] },
           ].map(({ label, range }) => (
             <button
               key={label}
               onClick={() => setPlanSizeRange(range as [number, number])}
-              className={`py-1 px-2 text-xs rounded-sm transition duration-200 ${planSizeRange === range ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black hover:bg-blue-300'}`}
+              className={`py-1.5 px-3 text-sm rounded transition duration-200 ${
+                JSON.stringify(planSizeRange) === JSON.stringify(range)
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
               {label}
             </button>
@@ -88,9 +144,9 @@ const SortAndFilter: React.FC<SortAndFilterProps> = ({ plans, onFilterAndSort })
         </div>
       </div>
 
-      <div className="mb-2">
-        <h4 className="font-medium text-sm">Duration</h4>
-        <div className="flex flex-wrap mt-1 gap-1">
+      <div className="mb-4">
+        <h4 className="font-medium text-sm mb-2">Duration</h4>
+        <div className="flex flex-wrap gap-2">
           {[
             { label: '1 Month', range: [1, 1] },
             { label: '3 Months', range: [3, 3] },
@@ -100,7 +156,11 @@ const SortAndFilter: React.FC<SortAndFilterProps> = ({ plans, onFilterAndSort })
             <button
               key={label}
               onClick={() => setDurationRange(range as [number, number])}
-              className={`py-1 px-2 text-xs rounded-sm transition duration-200 ${durationRange === range ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black hover:bg-blue-300'}`}
+              className={`py-1.5 px-3 text-sm rounded transition duration-200 ${
+                JSON.stringify(durationRange) === JSON.stringify(range)
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
               {label}
             </button>

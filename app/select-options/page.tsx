@@ -1,11 +1,9 @@
 // SelectOptions.tsx
-
 "use client"
 import { NextPage } from 'next';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/utils/translations';
 import NavBar from '../../components/NavBar';
 import Footer from '../../components/Footer';
 import PackageCard from '../../components/PackageCard';
@@ -99,58 +97,56 @@ const SelectOptions: NextPage = () => {
     }
   };
 
-  const handleSort = (sortedPlans: Plan[]) => {
-    setFilteredPlans(sortedPlans);
-  };
-
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <NavBar />
       <main className="container mx-auto py-6 flex flex-col md:flex-row">
-        <div className="w-full md:w-1/4 lg:w-1/4">
-          <SortAndFilter plans={plans} onFilterAndSort={handleSort} />
+        <div className="w-full md:w-1/4 lg:w-1/4 mb-6 md:mb-0">
+          <SortAndFilter plans={plans} onFilterAndSort={setFilteredPlans} />
         </div>
-        <div className="flex-1 md:ml-4">
+        <div className="flex-1 md:ml-6">
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, index) => (
                 <LoadingSkeleton key={index} />
               ))}
             </div>
           ) : (
-            <h1 className="text-3xl font-bold mb-6 text-center">
-              Explore the best eSIM packages for {options.country}
-            </h1>
+            <>
+              <h1 className="text-2xl font-bold mb-6">
+                Explore the best eSIM packages for {options.country}
+              </h1>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredPlans.map((plan, index) => (
+                  <PackageCard
+                    key={plan.externalId}
+                    packageNumber={plan.externalId}
+                    price={formatPrice(plan.price, plan.currency, language)}
+                    currency={plan.currency}
+                    duration={plan.duration}
+                    data={
+                      plan.capacity === -1
+                        ? 'Unlimited'
+                        : plan.capacity >= 1024
+                        ? `${(plan.capacity / 1024).toFixed(2)} GB`
+                        : `${plan.capacity} MB`
+                    }
+                    minutes={plan.phoneNumber ? 'Included' : 'Not included'}
+                    provider={plan.providerName}
+                    includesCalls={plan.phoneNumber}
+                    url={plan.url}
+                    onSelect={() => window.open(plan.url, '_blank')}
+                  >
+                    {index === 0 && (
+                      <span className="text-green-600 font-bold text-sm inline-flex items-center">
+                        🌟 Best Offer
+                      </span>
+                    )}
+                  </PackageCard>
+                ))}
+              </div>
+            </>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-            {filteredPlans.map((plan, index) => (
-              <PackageCard
-                key={plan.externalId}
-                packageNumber={plan.externalId}
-                price={formatPrice(plan.price, plan.currency, language)}
-                currency={plan.currency}
-                duration={plan.duration}
-                data={
-                  plan.capacity === -1
-                    ? 'Unlimited'
-                    : plan.capacity >= 1024
-                    ? `${(plan.capacity / 1024).toFixed(2)} GB`
-                    : `${plan.capacity} MB`
-                }
-                minutes={plan.phoneNumber ? 'Included' : 'Not included'}
-                provider={plan.providerName}
-                includesCalls={plan.phoneNumber}
-                url={plan.url}
-                onSelect={() => window.open(plan.url, '_blank')}
-              >
-                {index === 0 && (
-                  <span className="text-green-600 font-bold text-sm inline-flex items-center">
-                    🌟 Best Offer
-                  </span>
-                )}
-              </PackageCard>
-            ))}
-          </div>
         </div>
       </main>
       <Footer />
