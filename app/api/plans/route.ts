@@ -48,13 +48,14 @@ export async function GET(request: Request) {
     });
 
     const filteredPlans = allPlans.filter((plan) => {
-      return plan.coverages.some(coverage => {
+      return plan.coverages.some((coverage: string) => { // Explicitly type coverage as string
         const normalizedCoverage = coverage.toUpperCase();
         return normalizedCoverage === countryCode || 
                normalizedCoverage.startsWith(countryCode) ||
                countryCode.startsWith(normalizedCoverage);
       });
     });
+    
 
     // Sort plans by price in ascending order
     const sortedPlans = filteredPlans.sort((a, b) => a.price - b.price);

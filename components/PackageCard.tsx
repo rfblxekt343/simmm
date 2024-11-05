@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { FaPhone, FaCheck, FaGlobe, FaClock, FaDatabase } from 'react-icons/fa';
 
 const ProviderLogo = ({ provider }: { provider: string }) => {
@@ -21,7 +22,7 @@ const ProviderLogo = ({ provider }: { provider: string }) => {
 
   return (
     <div className="w-12 h-12 relative p-1.5 bg-white rounded-lg shadow-sm">
-      <img
+      <Image
         src={logoUrl}
         alt={`${provider} Logo`}
         className="object-contain w-full h-full"
